@@ -27,3 +27,6 @@ dist-ssr
 .firebase
 firebase-debug.log
 .env
+
+# Personal roadmap import files
+imports/
