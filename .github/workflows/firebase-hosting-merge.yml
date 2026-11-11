@@ -1,0 +1,49 @@
+# Builds the app and publishes it to Firebase Hosting on every push to main.
+# Firestore security rules are NOT deployed from here on purpose: they control
+# who can read what, so they go out only when someone runs
+#   npx firebase-tools deploy --only firestore:rules
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+
+# Never run two live deploys at once; finish the one in progress first.
+concurrency:
+  group: deploy-live
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Firebase web config. These identify the project and are already
+      # visible to anyone who opens the site; access is controlled by
+      # firestore.rules, not by these values.
+      VITE_FIREBASE_API_KEY: AIzaSyBBMH0ZRhz811D5Fq2C67bJfVVxjWapjQM
+      VITE_FIREBASE_AUTH_DOMAIN: pathway-roadmaps.firebaseapp.com
+      VITE_FIREBASE_PROJECT_ID: pathway-roadmaps
+      VITE_FIREBASE_STORAGE_BUCKET: pathway-roadmaps.firebasestorage.app
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '215768629562'
+      VITE_FIREBASE_APP_ID: 1:215768629562:web:4459d4804e12ad60b85003
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Stop here rather than publish a demo-mode build if the config went missing.
+      - name: Check the build is connected to Firebase
+        run: grep -rq "pathway-roadmaps.firebaseapp.com" dist/assets
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PATHWAY_ROADMAPS }}
+          channelId: live
+          projectId: pathway-roadmaps

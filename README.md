@@ -41,6 +41,8 @@ firebase deploy
 ```
 
 `firebase deploy` publishes `dist/` to Firebase Hosting and uploads the Firestore security rules.
+
+Every push to `main` also publishes the site automatically through GitHub Actions (`.github/workflows/firebase-hosting-merge.yml`). Security rules are not part of that: deploy them by hand.
 After changing the email allow-list, run `firebase deploy --only firestore:rules`.
 
 ## Data model (Firestore)
