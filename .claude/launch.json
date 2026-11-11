@@ -1,0 +1,32 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "roadmap-app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "roadmap-app-demo",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_FIREBASE_API_KEY=",
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5180"
+      ],
+      "port": 5180
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Only these Google accounts can sign in and use the app at all.
+    // Add more addresses here (comma-separated, each in quotes), then run:
+    //   firebase deploy --only firestore:rules
+    function isMember() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'mkarthim1998@gmail.com'
+        ];
+    }
+
+    // Roadmaps and projects are private: only the owner and the people the
+    // owner shared them with can see them.
+    function isOwner(data) {
+      return data.ownerId == request.auth.uid;
+    }
+    function isSharedWith(data) {
+      return request.auth.uid in data.sharedWith;
+    }
+    function canSee(data) {
+      return isOwner(data) || isSharedWith(data);
+    }
+    // The owner can change anything except who the owner is. A shared person
+    // can update the content but not the owner or the share list.
+    function validUpdate() {
+      return request.resource.data.ownerId == resource.data.ownerId
+        && (isOwner(resource.data)
+          || (isSharedWith(resource.data)
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'sharedWith'])));
+    }
+
+    // Small profile per person (name + photo) so people can be picked when sharing.
+    match /users/{uid} {
+      allow read: if isMember();
+      allow write: if isMember() && request.auth.uid == uid;
+    }
+
+    match /roadmaps/{id} {
+      allow read: if isMember() && canSee(resource.data);
+      allow create: if isMember() && isOwner(request.resource.data);
+      allow update: if isMember() && validUpdate();
+      allow delete: if isMember() && isOwner(resource.data);
+
+      // Topic comments: visible to exactly the people who can see the roadmap.
+      match /comments/{commentId} {
+        function roadmap() {
+          return get(/databases/$(database)/documents/roadmaps/$(id)).data;
+        }
+        allow read: if isMember() && canSee(roadmap());
+        allow create: if isMember() && canSee(roadmap()) && request.resource.data.userId == request.auth.uid;
+        allow delete: if isMember() && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    match /projects/{id} {
+      allow read: if isMember() && canSee(resource.data);
+      allow create: if isMember() && isOwner(request.resource.data);
+      allow update: if isMember() && validUpdate();
+      allow delete: if isMember() && isOwner(resource.data);
+    }
+
+    // Journal entries: everyone signed in reads, you can only add or delete your own.
+    match /logs/{id} {
+      allow read: if isMember();
+      allow create: if isMember() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isMember() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
